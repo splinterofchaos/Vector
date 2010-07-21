@@ -27,6 +27,12 @@ ostream& operator << ( ostream& os, const V2& v )
     return os;
 }
 
+template< typename T, int S >
+int size( const T (&v)[S] )
+{
+    return S;
+}
+
 int main()
 {
     V3 v1 = {2,4,8};
@@ -48,4 +54,5 @@ int main()
     TEST( magnitude( threeFourFive ), 5.0 ); // Tests dot(v1,v2) and magnitude(v).
     TEST( magnitude( threeFourFive, 10.0f ), threeFourFive*2 ); // Tests dot(v1,v2) and magnitude(v).
     TEST( normalize( threeFourFive ), threeFourFive/5.0 );
+    TEST( size(v1.data()), 3 );
 }

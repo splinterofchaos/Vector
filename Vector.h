@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include <iostream> // FOR TESTING ONLY
-
 // Define macros for using C++0x features if a proper version of g++ is used.
 #if defined(__GNUC__) && __GXX_EXPERIMENTAL_CXX0X__
     // If GXX_EXPERIMENT is true, GNUC is 4 or greater.
@@ -100,12 +98,30 @@ public:
 
         variadic_construct( 0, args... );
     }
+
+#else
+    template< typename U >
+    Vector( U x, U y )
+    {
+        this->x( x );
+        this->y( y );
+    }
+
+    template< typename U >
+    Vector( U x, U y, U z )
+    {
+        this->x( x );
+        this->y( y );
+        this->z( z );
+    }
+
 #endif
 
     template< class U >
     Vector& operator = ( const Vector<U,S>& v )
     {
         initialize( v.begin(), v.end() );
+        return *this;
     }
 
     // Capacity:
@@ -122,6 +138,9 @@ public:
     void x( value_type newVal ) { values[0] = newVal; }
     void y( value_type newVal ) { values[1] = newVal; }
     void z( value_type newVal ) { values[2] = newVal; }
+    reference x() { return values[0]; }
+    reference y() { return values[1]; }
+    reference z() { return values[2]; }
     const_reference x() const { return values[0]; }
     const_reference y() const { return values[1]; }
     const_reference z() const { return values[2]; }
@@ -187,7 +206,7 @@ public:
 #undef OTHER_VEC
 
     // Unary operators.
-    Vector operator - ()
+    Vector operator - () const
     {
         Vector v;
         std::transform( begin(), end(), v.begin(), std::negate<value_type>() );
@@ -238,7 +257,7 @@ BIN_OP_RET_TYPE operator - ( const VEC1& a, const VEC2& b )
     return c;
 }
 
-#if defined( USE_RVAL_REFS )
+#if defined( USE_RVAL_REFS_ )
 BIN_OP_TEMPLATE
 VEC1&& operator + ( VEC1&& a, const VEC2& b )
 {
@@ -360,6 +379,34 @@ typename BIN_OP_RET_TYPE::value_type dot( const VEC1& a, const VEC2& b )
     return a * b;
 }
 
+BIN_OP_TEMPLATE
+BIN_OP_RET_TYPE cross( const VEC1& a, const VEC2& b )
+{
+    BIN_OP_RET_TYPE c;
+    c[0] = a[1]*b[2] - a[2]*b[1];
+    c[1] = a[2]*b[0] - a[0]*b[2];
+    c[2] = a[0]*b[1] - a[1]*b[0];
+    return c;
+}
+
+template< typename T >
+T cross( const Vector<T,2>& a, const Vector<T,2>& b )
+{
+    return a.x()*b.y() - a.y()*b.x();
+}
+
+BIN_OP_TEMPLATE
+typename BIN_OP_RET_TYPE::value_type angle_between( const VEC1& a, const VEC2& b )
+{
+    return std::acos( (a*b) / (magnitude(a)*magnitude(b)) );
+}
+
+BIN_OP_TEMPLATE
+BIN_OP_RET_TYPE projection( const VEC1& a, const VEC2& b )
+{
+    return ( a * unit(b) ) * unit(b);
+}
+
 #undef BIN_OP_RET_TYPE
 #undef BIN_OP_TEMPLATE
 #undef VEC1
@@ -369,7 +416,7 @@ typename BIN_OP_RET_TYPE::value_type dot( const VEC1& a, const VEC2& b )
 #define VEC Vector<T,S>
 
 UNARY_OP_TEMPLATE
-T magnitudeSqr( const VEC& v )
+T magnitude_sqr( const VEC& v )
 {
     return v * v;
 }
@@ -377,7 +424,7 @@ T magnitudeSqr( const VEC& v )
 UNARY_OP_TEMPLATE
 T magnitude( const VEC& v )
 {
-    return std::sqrt( magnitudeSqr(v) );
+    return std::sqrt( magnitude_sqr(v) );
 }
 
 UNARY_OP_TEMPLATE
@@ -389,9 +436,9 @@ VEC magnitude( const VEC& v, T newMag )
 }
 
 UNARY_OP_TEMPLATE
-VEC normalize( const VEC& v )
+VEC unit( const VEC& v )
 {
-    T x = magnitudeSqr( v );
+    T x = magnitude_sqr( v );
 
     if( x ) {
         // x = ||v||
@@ -403,8 +450,56 @@ VEC normalize( const VEC& v )
     }
 }
 
+template< typename T >
+Vector<T,2> clockwise_tangent( const Vector<T,2>& v )
+{
+    return Vector<T,2>( -v.y(), v.x() );
+}
+
+template< typename T >
+Vector<T,2> counter_clockwise_tangent( const Vector<T,2>& v )
+{
+    return Vector<T,2>( v.y(), -v.x() );
+}
+
+// vector( x... ) -> Vector( x... )
+//      A convenience for users not wanting to mess with the template
+//      parameters of Vector's ctor.
+#if defined( USE_VARIADIC_TEMPLATES )
+    template< typename T, typename... VT >
+    Vector< T, sizeof...(VT)+1 > vector( const T x, const VT... varg )
+    {
+        return Vector< T, sizeof...(VT)+1 >( x, varg... );
+    }
+#else
+    template< typename T >
+    Vector<T,2> vector( T x, T y )
+    {
+        Vector<T,2> v;
+        v.x(x); v.y(y);
+        return v;
+    }
+
+    template< typename T >
+    Vector<T,3> vector( T x, T y, T z )
+    {
+        Vector<T,3> v;
+        v.x(x); v.y(y); v.z(z);
+        return v;
+    }
+
+    template< typename T >
+    Vector<T,4> vector( T x, T y, T z, T h )
+    {
+        Vector<T,4> v;
+        v.x(x); v.y(y); v.z(z);// v[3] = h;
+        return v;
+    }
+#endif
+
 #undef UNARY_OP_TEMPLATE
 #undef VEC
 
 #undef USE_INIT_LISTS
 #undef USE_RVAL_REFS
+#undef USE_VARIADIC_TEMPLATES
